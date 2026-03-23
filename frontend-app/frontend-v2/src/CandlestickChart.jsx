@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createChart, CandlestickSeries } from "lightweight-charts";
 
-const API = "http://localhost:8000";
+const API = "https://nifty-intelligence-api.onrender.com";
 
 export default function CandlestickChart() {
   const chartRef  = useRef(null);
