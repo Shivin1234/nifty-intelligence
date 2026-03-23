@@ -59,47 +59,87 @@ def fetch_live_features():
     df = df.dropna()
     return df
 
+import time
+
+predict_cache = {
+    "data": None,
+    "timestamp": 0
+}
+
 @app.get("/predict")
 def predict():
-    df = fetch_live_features()
-    latest = df[FEATURES].iloc[[-1]]  # most recent day
+    current_time = time.time()
 
-    dir_pred   = le_dir.inverse_transform(dir_model.predict(latest))[0]
-    vol_pred   = le_vol.inverse_transform(vol_model.predict(latest))[0]
-    dir_proba  = dir_model.predict_proba(latest)[0]
-    strategy   = STRATEGY_MAP.get((dir_pred, vol_pred), "No clear strategy")
+    # refresh every 60 seconds
+    if predict_cache["data"] is None or current_time - predict_cache["timestamp"] > 60:
 
-    return {
-        "direction":  dir_pred,
-        "volatility": vol_pred,
-        "strategy":   strategy,
-        "probabilities": {
-            cls: round(float(prob), 4)
-            for cls, prob in zip(le_dir.classes_, dir_proba)
-        },
-        "latest_close": round(float(df["Close"].iloc[-1]), 2),
-        "latest_date":  str(df.index[-1].date())
-    }
+        df = fetch_live_features()
+        latest = df[FEATURES].iloc[[-1]]
+
+        dir_pred   = le_dir.inverse_transform(dir_model.predict(latest))[0]
+        vol_pred   = le_vol.inverse_transform(vol_model.predict(latest))[0]
+        dir_proba  = dir_model.predict_proba(latest)[0]
+        strategy   = STRATEGY_MAP.get((dir_pred, vol_pred), "No clear strategy")
+
+        predict_cache["data"] = {
+            "direction":  dir_pred,
+            "volatility": vol_pred,
+            "strategy":   strategy,
+            "probabilities": {
+                cls: round(float(prob), 4)
+                for cls, prob in zip(le_dir.classes_, dir_proba)
+            },
+            "latest_close": round(float(df["Close"].iloc[-1]), 2),
+            "latest_date":  str(df.index[-1].date())
+        }
+
+        predict_cache["timestamp"] = current_time
+
+    return predict_cache["data"]
 
 @app.get("/health")
 def health():
     return {"status": "running"}
 
+import time
+
+candles_cache = {
+    "data": None,
+    "timestamp": 0
+}
+
 @app.get("/candles")
 def candles(period: str = "6mo"):
-    df = yf.download("^NSEI", period=period, interval="1d", progress=False)
-    df.columns = df.columns.droplevel(1)
-    df = df.dropna()
-    return [
-        {
-            "time":  date.strftime("%Y-%m-%d"),
-            "open":  round(float(row["Open"]),  2),
-            "high":  round(float(row["High"]),  2),
-            "low":   round(float(row["Low"]),   2),
-            "close": round(float(row["Close"]), 2),
-        }
-        for date, row in df.iterrows()
-    ]
+    current_time = time.time()
+
+    # refresh every 60 seconds
+    if candles_cache["data"] is None or current_time - candles_cache["timestamp"] > 60:
+
+        df = yf.download(
+            "^NSEI",
+            period=period,
+            interval="1d",
+            progress=False,
+            threads=False   # 🔥 important
+        )
+
+        df.columns = df.columns.droplevel(1)
+        df = df.dropna()
+
+        candles_cache["data"] = [
+            {
+                "time":  date.strftime("%Y-%m-%d"),
+                "open":  round(float(row["Open"]),  2),
+                "high":  round(float(row["High"]),  2),
+                "low":   round(float(row["Low"]),   2),
+                "close": round(float(row["Close"]), 2),
+            }
+            for date, row in df.iterrows()
+        ]
+
+        candles_cache["timestamp"] = current_time
+
+    return candles_cache["data"]
 
 @app.get("/history")
 def history():
