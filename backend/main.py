@@ -41,7 +41,8 @@ def fetch_live_features():
     end   = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     start = (datetime.date.today() - datetime.timedelta(days=120)).strftime("%Y-%m-%d")
     df = yf.download("^NSEI", start=start, end=end, interval="1d", progress=False)
-    df.columns = df.columns.droplevel(1)
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.droplevel(1)
     df = df.rename(columns={
         "Open": "Open", "High": "High",
         "Low": "Low",   "Close": "Close"
@@ -56,7 +57,7 @@ def fetch_live_features():
     df["Close_MA5_Ratio"]  = df["Close"] / df["MA5"]
     df["Close_MA20_Ratio"] = df["Close"] / df["MA20"]
     df["Rolling_Vol"]      = df["HL_Range"].rolling(5).mean()
-    df = df.dropna()
+    df = df.fillna(method="bfill").fillna(method="ffill")
     return df
 
 @app.get("/predict")
@@ -104,7 +105,11 @@ def candles(period: str = "6mo"):
 @app.get("/history")
 def history():
     df = yf.download("^NSEI", period="30d", interval="1d", progress=False)
-    df.columns = df.columns.droplevel(1)
+
+    # ✅ FIX 1: safe droplevel
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.droplevel(1)
+
     df["HL_Range"]         = df["High"] - df["Low"]
     df["Prev_Diff"]        = df["Close"].diff()
     df["Pct_Change"]       = df["Close"].pct_change() * 100
@@ -115,7 +120,13 @@ def history():
     df["Close_MA5_Ratio"]  = df["Close"] / df["MA5"]
     df["Close_MA20_Ratio"] = df["Close"] / df["MA20"]
     df["Rolling_Vol"]      = df["HL_Range"].rolling(5).mean()
-    df = df.dropna()
+
+    # ✅ FIX 2: replace dropna
+    df = df.fillna(method="bfill").fillna(method="ffill")
+
+    # ✅ FIX 3: safety check
+    if len(df) < 2:
+        return []
 
     FEATURES = joblib.load("models/feature_list.pkl")
     le_dir   = joblib.load("models/label_encoder_direction.pkl")
@@ -127,12 +138,14 @@ def history():
         next_close = float(df["Close"].iloc[i + 1])
         curr_close = float(df["Close"].iloc[i])
         change     = (next_close - curr_close) / curr_close * 100
+
         if change > 0.3:
             actual = "UP"
         elif change < -0.3:
             actual = "DOWN"
         else:
             actual = "SIDEWAYS"
+
         results.append({
             "date":      str(df.index[i].date()),
             "predicted": predicted,
