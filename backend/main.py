@@ -106,7 +106,6 @@ def candles(period: str = "6mo"):
 def history():
     df = yf.download("^NSEI", period="30d", interval="1d", progress=False)
 
-    # ✅ FIX 1: safe droplevel
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.droplevel(1)
 
@@ -121,15 +120,15 @@ def history():
     df["Close_MA20_Ratio"] = df["Close"] / df["MA20"]
     df["Rolling_Vol"]      = df["HL_Range"].rolling(5).mean()
 
-    # ✅ FIX 2: replace dropna
     df = df.fillna(method="bfill").fillna(method="ffill")
 
-    # ✅ FIX 3: safety check
     if len(df) < 2:
         return []
 
-    FEATURES = joblib.load("models/feature_list.pkl")
-    le_dir   = joblib.load("models/label_encoder_direction.pkl")
+    # ✅ NEW SAFETY
+    missing_cols = [col for col in FEATURES if col not in df.columns]
+    if missing_cols:
+        return []
 
     results = []
     for i in range(len(df) - 1):
