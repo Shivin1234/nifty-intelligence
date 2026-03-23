@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import ChartSection from "./ChartSection";
 
-const API = "http://localhost:8000";
+const API = "https://nifty-intelligence-api.onrender.com";
 
 const strategyDetails = {
   "Bull Call Spread":       { risk: "Limited",  reward: "Limited",   sentiment: "Bullish", color: "#00ff87" },
