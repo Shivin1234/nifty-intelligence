@@ -103,7 +103,7 @@ def candles(period: str = "6mo"):
 
 @app.get("/history")
 def history():
-    df = yf.download("^NSEI", period="30d", interval="1d", progress=False)
+    df = yf.download("^NSEI", period="120d", interval="1d", progress=False)
     df.columns = df.columns.droplevel(1)
     df["HL_Range"]         = df["High"] - df["Low"]
     df["Prev_Diff"]        = df["Close"].diff()
