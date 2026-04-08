@@ -40,7 +40,7 @@ def fetch_live_features():
     import datetime
     end   = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     start = (datetime.date.today() - datetime.timedelta(days=120)).strftime("%Y-%m-%d")
-    df = yf.download("^NSEI", start=start, end=end, interval="1d", progress=False)
+    df = yf.download("^NSEI", period="3mo", interval="1d", progress=False)
     df.columns = df.columns.droplevel(1)
     df = df.rename(columns={
         "Open": "Open", "High": "High",
