@@ -36,50 +36,63 @@ STRATEGY_MAP = {
 }
 
 def fetch_live_features():
-    """Fetch live NIFTY data and compute features"""
     import datetime
-    end   = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-    start = (datetime.date.today() - datetime.timedelta(days=120)).strftime("%Y-%m-%d")
-    df = yf.download("^NSEI", period="3mo", interval="1d", progress=False)
-    df.columns = df.columns.droplevel(1)
-    df = df.rename(columns={
-        "Open": "Open", "High": "High",
-        "Low": "Low",   "Close": "Close"
-    })
-    df["HL_Range"]         = df["High"] - df["Low"]
-    df["Prev_Diff"]        = df["Close"].diff()
-    df["Pct_Change"]       = df["Close"].pct_change() * 100
-    df["MA5"]              = df["Close"].rolling(5).mean()
-    df["MA20"]             = df["Close"].rolling(20).mean()
-    df["MA50"]             = df["Close"].rolling(50).mean()
-    df["Momentum"]         = df["Close"] - df["Close"].shift(5)
-    df["Close_MA5_Ratio"]  = df["Close"] / df["MA5"]
-    df["Close_MA20_Ratio"] = df["Close"] / df["MA20"]
-    df["Rolling_Vol"]      = df["HL_Range"].rolling(5).mean()
-    df = df.dropna()
-    return df
+    try:
+        df = yf.download("^NSEI", period="3mo", interval="1d", progress=False)
+
+        if df is None or df.empty:
+            return None
+
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.droplevel(1)
+
+        df["HL_Range"]         = df["High"] - df["Low"]
+        df["Prev_Diff"]        = df["Close"].diff()
+        df["Pct_Change"]       = df["Close"].pct_change() * 100
+        df["MA5"]              = df["Close"].rolling(5).mean()
+        df["MA20"]             = df["Close"].rolling(20).mean()
+        df["MA50"]             = df["Close"].rolling(50).mean()
+        df["Momentum"]         = df["Close"] - df["Close"].shift(5)
+        df["Close_MA5_Ratio"]  = df["Close"] / df["MA5"]
+        df["Close_MA20_Ratio"] = df["Close"] / df["MA20"]
+        df["Rolling_Vol"]      = df["HL_Range"].rolling(5).mean()
+
+        df = df.dropna()
+        return df
+
+    except Exception as e:
+        print("ERROR:", e)
+        return None
 
 @app.get("/predict")
 def predict():
-    df = fetch_live_features()
-    latest = df[FEATURES].iloc[[-1]]  # most recent day
+    try:
+        df = fetch_live_features()
 
-    dir_pred   = le_dir.inverse_transform(dir_model.predict(latest))[0]
-    vol_pred   = le_vol.inverse_transform(vol_model.predict(latest))[0]
-    dir_proba  = dir_model.predict_proba(latest)[0]
-    strategy   = STRATEGY_MAP.get((dir_pred, vol_pred), "No clear strategy")
+        if df is None or df.empty:
+            return {"error": "No data available"}
 
-    return {
-        "direction":  dir_pred,
-        "volatility": vol_pred,
-        "strategy":   strategy,
-        "probabilities": {
-            cls: round(float(prob), 4)
-            for cls, prob in zip(le_dir.classes_, dir_proba)
-        },
-        "latest_close": round(float(df["Close"].iloc[-1]), 2),
-        "latest_date":  str(df.index[-1].date())
-    }
+        latest = df[FEATURES].iloc[[-1]]
+
+        dir_pred   = le_dir.inverse_transform(dir_model.predict(latest))[0]
+        vol_pred   = le_vol.inverse_transform(vol_model.predict(latest))[0]
+        dir_proba  = dir_model.predict_proba(latest)[0]
+        strategy   = STRATEGY_MAP.get((dir_pred, vol_pred), "No clear strategy")
+
+        return {
+            "direction":  dir_pred,
+            "volatility": vol_pred,
+            "strategy":   strategy,
+            "probabilities": {
+                cls: round(float(prob), 4)
+                for cls, prob in zip(le_dir.classes_, dir_proba)
+            },
+            "latest_close": round(float(df["Close"].iloc[-1]), 2),
+            "latest_date":  str(df.index[-1].date())
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.get("/health")
 def health():
