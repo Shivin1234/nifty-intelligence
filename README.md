@@ -37,7 +37,7 @@
 
 | Model | Algorithm | Accuracy | Output |
 |-------|-----------|----------|--------|
-| Direction Predictor | XGBoost Classifier | 49.22% | UP / DOWN / SIDEWAYS |
+| Direction Predictor | XGBoost Classifier | 76.8% | UP / DOWN / SIDEWAYS |
 | Volatility Predictor | XGBoost Classifier | 81.3% | Low / Medium / High |
 
 ### Training Data
