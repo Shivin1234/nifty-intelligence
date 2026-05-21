@@ -78,7 +78,7 @@ function PriceHero({ data, directionColor }) {
         {[
           { label: "MODEL",    value: "XGBoost"       },
           { label: "FEATURES", value: "11 Engineered" },
-          { label: "ACCURACY", value: "49.22%"         },
+          { label: "ACCURACY", value: "76.8%"         },
         ].map(({ label, value }) => (
           <div key={label} style={{ background: "#0d0d1a", borderRadius: "10px", padding: "12px", textAlign: "center" }}>
             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: "#999", marginBottom: "6px", letterSpacing: "0.1em" }}>{label}</div>
@@ -261,7 +261,7 @@ function ModelConfidence({ probabilities }) {
       {/* Accuracy row */}
       <div style={{ marginTop: "28px", paddingTop: "20px", borderTop: "1px solid #ffffff08", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
         {[
-          { label: "DIR ACCURACY", value: "49.22%", color: "#00ff87" },
+          { label: "DIR ACCURACY", value: "76.8%", color: "#00ff87" },
           { label: "VOL ACCURACY", value: "81.3%", color: "#6460ff" },
           { label: "BACKTEST",     value: "74.2%", color: "#ffd60a" },
         ].map(({ label, value, color }) => (
@@ -436,7 +436,7 @@ export default function TradingDashboard() {
                 { label: "MODEL",    value: "XGBoost Classifier"     },
                 { label: "TRAINING", value: "2000–2026 · 6,200+ days" },
                 { label: "FEATURES", value: "11 engineered"           },
-                { label: "ACCURACY", value: "49.22%"                   },
+                { label: "ACCURACY", value: "76.8%"                   },
                 { label: "SOURCE",   value: "yfinance API"            },
                 { label: "STATUS",   value: "LIVE", highlight: true   },
               ].map(({ label, value, highlight }) => (
